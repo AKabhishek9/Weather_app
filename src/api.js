@@ -1,0 +1,215 @@
+/**
+ * src/api.js
+ * Network layer: fetches weather data and search suggestions.
+ * Handles AbortController, caching, search-history merging, and URL routing.
+ */
+
+import { appCache, WEATHER_TTL, SEARCH_TTL } from './cache.js';
+import { recordSearch, getHistoryMatches }   from './state.js';
+
+// ── Constants ──────────────────────────────────────────────────────────────
+
+const API_KEY  = 'e62f2c31afcc4f3dba5124730261503';
+const BASE_URL = 'https://api.weatherapi.com/v1';
+
+/**
+ * True when served from a real domain (Vercel).
+ * False when running from file:// or localhost.
+ */
+export const IS_PRODUCTION = (() => {
+    if (location.protocol === 'file:') return false;
+    if (['localhost', '127.0.0.1'].includes(location.hostname)) return false;
+    return true;
+})();
+
+// ── AbortControllers ───────────────────────────────────────────────────────
+
+let weatherAbortController = null;
+let searchAbortController  = null;
+
+// ── URL builder ────────────────────────────────────────────────────────────
+
+/**
+ * Build the weather fetch URL for the current environment.
+ * Production → Vercel serverless proxy (hides the API key).
+ * Local dev  → direct WeatherAPI call.
+ * @param {string} query - city name or "lat,lon"
+ * @returns {string}
+ */
+function buildWeatherUrl(query) {
+    if (IS_PRODUCTION) {
+        return `/api/weather?q=${encodeURIComponent(query)}&days=6&aqi=yes`;
+    }
+    return `${BASE_URL}/forecast.json?key=${API_KEY}&q=${encodeURIComponent(query)}&days=6&aqi=yes&alerts=no`;
+}
+
+/**
+ * Build the search/autocomplete URL for the current environment.
+ * @param {string} query
+ * @returns {string}
+ */
+function buildSearchUrl(query) {
+    if (IS_PRODUCTION) {
+        return `/api/search?q=${encodeURIComponent(query)}`;
+    }
+    return `${BASE_URL}/search.json?key=${API_KEY}&q=${encodeURIComponent(query)}`;
+}
+
+// ── fetchWeather ───────────────────────────────────────────────────────────
+
+/**
+ * Fetch current weather + 5-day forecast.
+ * Aborts in-flight requests, checks cache, records search history.
+ *
+ * @param {string}   query - city name or "lat,lon"
+ * @param {object}   callbacks
+ * @param {Function} callbacks.onStart   - called when a real network request begins
+ * @param {Function} callbacks.onData    - called with the full API response object
+ * @param {Function} callbacks.onError   - called with a human-readable error string
+ * @param {Function} callbacks.onFinally - always called after fetch completes
+ */
+export async function fetchWeather(query, { onStart, onData, onError, onFinally } = {}) {
+    if (!IS_PRODUCTION && !API_KEY) {
+        onError?.('Local testing: add your API key to src/api.js');
+        return;
+    }
+
+    // Cancel any in-flight weather request
+    if (weatherAbortController) weatherAbortController.abort();
+    weatherAbortController = new AbortController();
+
+    // Serve from cache if fresh
+    const cacheKey = `weather:${query.toLowerCase()}`;
+    const cached   = appCache.get(cacheKey);
+    if (cached) {
+        onData?.(cached);
+        return;
+    }
+
+    onStart?.();
+
+    try {
+        const res = await fetch(buildWeatherUrl(query), {
+            signal: weatherAbortController.signal,
+        });
+
+        if (!res.ok) {
+            const body = await res.json().catch(() => null);
+            throw new Error(body?.error?.message || 'City not found. Please try another name.');
+        }
+
+        const data = await res.json();
+
+        // Populate cache
+        appCache.set(cacheKey, data, WEATHER_TTL);
+
+        // Persist search history
+        if (data.location) {
+            recordSearch(data.location.name, data.location.country, data.location.region);
+        }
+
+        onData?.(data);
+    } catch (err) {
+        if (err.name === 'AbortError') return; // Cancelled — silent
+
+        const msg = err.message === 'Failed to fetch'
+            ? 'Could not connect to WeatherAPI. On Live Server, open localhost:3000 via node server.js instead.'
+            : err.message;
+
+        onError?.(msg);
+    } finally {
+        onFinally?.();
+    }
+}
+
+// ── fetchSuggestions ───────────────────────────────────────────────────────
+
+/**
+ * Fetch autocomplete city suggestions, merged with local search history.
+ * Aborts previous in-flight search request.
+ *
+ * @param {string}   query
+ * @param {object}   callbacks
+ * @param {Function} callbacks.onResults  - called with merged array of city objects
+ * @param {Function} callbacks.onError    - called when both API and history are empty
+ */
+export async function fetchSuggestions(query, { onResults, onError } = {}) {
+    if (searchAbortController) searchAbortController.abort();
+    searchAbortController = new AbortController();
+
+    try {
+        // Check cache first
+        const cacheKey  = `search:${query.toLowerCase()}`;
+        const cached    = appCache.get(cacheKey);
+        let   apiResults;
+
+        if (cached) {
+            apiResults = cached;
+        } else {
+            const res = await fetch(buildSearchUrl(query), {
+                signal: searchAbortController.signal,
+            });
+            if (!res.ok) throw new Error('Search failed');
+            apiResults = await res.json();
+            appCache.set(cacheKey, apiResults, SEARCH_TTL);
+        }
+
+        const historyMatches = getHistoryMatches(query);
+        const merged         = _mergeResults(historyMatches, apiResults);
+
+        onResults?.(merged);
+    } catch (err) {
+        if (err.name === 'AbortError') return;
+
+        console.error('Autocomplete error:', err);
+
+        // Graceful degradation: show history even if API fails
+        const historyMatches = getHistoryMatches(query);
+        if (historyMatches.length > 0) {
+            onResults?.(historyMatches.map(h => ({ ...h, _fromHistory: true })));
+        } else {
+            onError?.();
+        }
+    }
+}
+
+// ── Private helpers ────────────────────────────────────────────────────────
+
+/**
+ * Merge history matches (tagged) with API results, deduplicating by name+country.
+ * Order: history (by frequency) → India → rest.
+ */
+function _mergeResults(historyMatches, apiResults) {
+    const merged = [];
+    const seen   = new Set();
+
+    // History items first (tagged so UI can render clock icon + badge)
+    historyMatches.forEach(h => {
+        const key = `${h.name}|${h.country}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            merged.push({ ...h, _fromHistory: true });
+        }
+    });
+
+    // API results (de-duplicated)
+    apiResults.forEach(city => {
+        const key = `${city.name}|${city.country}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            merged.push(city);
+        }
+    });
+
+    // Sort: history first → India → rest
+    merged.sort((a, b) => {
+        if (a._fromHistory && !b._fromHistory) return -1;
+        if (!a._fromHistory && b._fromHistory) return  1;
+        if (a._fromHistory && b._fromHistory)  return (b.count || 0) - (a.count || 0);
+        if (a.country === 'India' && b.country !== 'India') return -1;
+        if (a.country !== 'India' && b.country === 'India') return  1;
+        return 0;
+    });
+
+    return merged;
+}
