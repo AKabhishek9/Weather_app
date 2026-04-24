@@ -7,6 +7,28 @@
 import { appCache, WEATHER_TTL, SEARCH_TTL } from './cache.js';
 import { recordSearch, getHistoryMatches }   from './state.js';
 
+// ── Offline banner helpers ─────────────────────────────────────────────────
+
+function showOfflineBanner(isoTimestamp) {
+    const banner = document.getElementById('offline-banner');
+    const label  = document.getElementById('offline-timestamp');
+    if (!banner) return;
+    if (isoTimestamp) {
+        try {
+            label.textContent = new Date(isoTimestamp).toLocaleString();
+        } catch {
+            label.textContent = 'a previous session';
+        }
+    }
+    banner.hidden = false;
+}
+
+function hideOfflineBanner() {
+    const banner = document.getElementById('offline-banner');
+    if (banner) banner.hidden = true;
+}
+
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const API_KEY  = 'e62f2c31afcc4f3dba5124730261503';
@@ -93,6 +115,9 @@ export async function fetchWeather(query, { onStart, onData, onError, onFinally 
             signal: weatherAbortController.signal,
         });
 
+        const fromCache = res.headers.get('sw-from-cache') === 'true';
+        const timestamp = res.headers.get('sw-timestamp') || '';
+
         if (!res.ok) {
             const body = await res.json().catch(() => null);
             throw new Error(body?.error?.message || 'City not found. Please try another name.');
@@ -100,12 +125,19 @@ export async function fetchWeather(query, { onStart, onData, onError, onFinally 
 
         const data = await res.json();
 
-        // Populate cache
+        // Populate in-memory cache
         appCache.set(cacheKey, data, WEATHER_TTL);
 
         // Persist search history
         if (data.location) {
             recordSearch(data.location.name, data.location.country, data.location.region);
+        }
+
+        // Show/hide offline banner based on SW header
+        if (fromCache) {
+            showOfflineBanner(timestamp);
+        } else {
+            hideOfflineBanner();
         }
 
         onData?.(data);
@@ -121,6 +153,7 @@ export async function fetchWeather(query, { onStart, onData, onError, onFinally 
         onFinally?.();
     }
 }
+
 
 // ── fetchSuggestions ───────────────────────────────────────────────────────
 

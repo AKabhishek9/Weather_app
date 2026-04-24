@@ -12,6 +12,10 @@ import { fmtTemp, fmtTempOnly, setLastWeatherData } from './state.js';
 import { setWeatherIllustration, setBackgroundAnimation } from './animations.js';
 import { formatDate } from './utils.js';
 
+// Chart.js instance (destroyed + re-created on each weather fetch)
+let precipChart = null;
+
+
 // ── DOM element cache ──────────────────────────────────────────────────────
 
 const bgAnimations       = document.getElementById('bg-animations');
@@ -247,6 +251,112 @@ export function renderHourly(forecastDays, localtime) {
             </div>`;
 
         hourlyScroll.appendChild(item);
+    });
+
+    // Draw the precipitation chart below the cards
+    renderPrecipChart(futureHours);
+}
+
+// ── Precipitation bar chart (Chart.js) ────────────────────────────────────
+
+/**
+ * Render / update the precipitation-probability bar chart.
+ * Called automatically by renderHourly().
+ * @param {object[]} hours - filtered future hourly data (max 24)
+ */
+export function renderPrecipChart(hours) {
+    const canvas = document.getElementById('precip-chart');
+    if (!canvas) return;
+
+    // Wait for Chart.js to be available (loaded via CDN with defer)
+    if (typeof Chart === 'undefined') {
+        window.addEventListener('load', () => renderPrecipChart(hours), { once: true });
+        return;
+    }
+
+    // Destroy previous chart to avoid memory leaks / double render
+    if (precipChart) {
+        precipChart.destroy();
+        precipChart = null;
+    }
+
+    const labels = hours.map((h, idx) => {
+        if (idx === 0) return 'Now';
+        const d = new Date(h.time.replace(' ', 'T'));
+        return d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+    });
+
+    const rainData = hours.map(h => h.chance_of_rain || 0);
+    const snowData = hours.map(h => h.chance_of_snow || 0);
+    // Use whichever precip type is higher per slot
+    const data = rainData.map((r, i) => Math.max(r, snowData[i]));
+
+    // Colour bars based on intensity: blue gradient
+    const barColors = data.map(v => {
+        if (v === 0)  return 'rgba(255,255,255,0.10)';
+        if (v < 25)   return 'rgba(79,195,247,0.35)';
+        if (v < 50)   return 'rgba(79,195,247,0.55)';
+        if (v < 75)   return 'rgba(79,195,247,0.75)';
+        return 'rgba(3,155,229,0.90)';
+    });
+
+    precipChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Precipitation %',
+                data,
+                backgroundColor: barColors,
+                borderColor:     'rgba(79,195,247,0.3)',
+                borderWidth:     1,
+                borderRadius:    4,
+                borderSkipped:   false,
+            }],
+        },
+        options: {
+            responsive:          true,
+            maintainAspectRatio: false,
+            animation:           { duration: 600, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.raw}% chance of rain`,
+                    },
+                    backgroundColor: 'rgba(10,25,50,0.90)',
+                    titleColor:      '#4fc3f7',
+                    bodyColor:       '#e8f0f8',
+                    padding:         10,
+                    cornerRadius:    8,
+                },
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color:    'rgba(232,240,248,0.6)',
+                        font:     { family: 'Poppins', size: 10 },
+                        maxRotation: 0,
+                        // Show every 3rd label to avoid crowding
+                        callback: (val, idx) => idx % 3 === 0 ? labels[idx] : '',
+                    },
+                    grid: { display: false },
+                    border: { color: 'rgba(255,255,255,0.08)' },
+                },
+                y: {
+                    min:  0,
+                    max:  100,
+                    ticks: {
+                        color:     'rgba(232,240,248,0.5)',
+                        font:      { family: 'Poppins', size: 10 },
+                        stepSize:  25,
+                        callback:  v => v + '%',
+                    },
+                    grid: { color: 'rgba(255,255,255,0.06)' },
+                    border: { color: 'rgba(255,255,255,0.08)' },
+                },
+            },
+        },
     });
 }
 
