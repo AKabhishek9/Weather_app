@@ -41,16 +41,16 @@ export function setWeatherIllustration(code, isDay, stageEl, contentEl) {
         contentEl.innerHTML = buildSceneCloudy(isDay);
     } else if (CODES.rain.includes(code)) {
         stageEl.classList.add(isDay ? 'scene-rain-day' : 'scene-rain-night');
-        contentEl.innerHTML = buildSceneRain(isDay);
+        contentEl.innerHTML = buildSceneRain();
     } else if (CODES.snow.includes(code)) {
         stageEl.classList.add(isDay ? 'scene-snow-day' : 'scene-snow-night');
         contentEl.innerHTML = buildSceneSnow(isDay);
     } else if (CODES.thunder.includes(code)) {
         stageEl.classList.add(isDay ? 'scene-thunder-day' : 'scene-thunder-night');
-        contentEl.innerHTML = buildSceneThunder(isDay);
+        contentEl.innerHTML = buildSceneThunder();
     } else if (CODES.mist.includes(code)) {
         stageEl.classList.add(isDay ? 'scene-mist-day' : 'scene-mist-night');
-        contentEl.innerHTML = buildSceneMist(isDay);
+        contentEl.innerHTML = buildSceneMist();
     } else {
         stageEl.classList.add(isDay ? 'scene-cloudy-day' : 'scene-cloudy-night');
         contentEl.innerHTML = buildSceneCloudy(isDay);
@@ -189,7 +189,7 @@ function buildSceneCloudy(isDay) {
             "background:linear-gradient(to top,rgba(20,35,55,.8),rgba(20,35,55,.4),transparent);"></div>`;
 }
 
-function buildSceneRain(isDay) {
+function buildSceneRain() {
     let drops = '';
     for (let i = 0; i < 60; i++) {
         const l       = Math.random() * 100;
@@ -229,7 +229,7 @@ function buildSceneSnow(isDay) {
             "background:linear-gradient(to top,rgba(240,245,255,.85),rgba(180,210,230,.4),transparent);"></div>`;
 }
 
-function buildSceneThunder(isDay) {
+function buildSceneThunder() {
     let drops = '';
     for (let i = 0; i < 70; i++) {
         const l     = Math.random() * 100;
@@ -254,7 +254,7 @@ function buildSceneThunder(isDay) {
             "background:linear-gradient(to top,rgba(5,5,15,.98),rgba(5,5,15,.6),transparent);"></div>`;
 }
 
-function buildSceneMist(isDay) {
+function buildSceneMist() {
     return `
         <div class="scene-mist" style="height:80px;bottom:20px;animation-duration:5s;"></div>
         <div class="scene-mist" style="height:60px;bottom:50px;animation-duration:7s;animation-delay:.5s;"></div>

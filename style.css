@@ -524,6 +524,66 @@ img {
     text-decoration: none;
 }
 
+.header__right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-0-75rem);
+}
+
+.hamburger-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    color: var(--clr-text);
+}
+.hamburger-box {
+    width: 24px;
+    height: 18px;
+    display: inline-block;
+    position: relative;
+}
+.hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
+    width: 24px;
+    height: 2px;
+    background-color: currentColor;
+    border-radius: 2px;
+    position: absolute;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.hamburger-inner {
+    top: 50%;
+    margin-top: -1px;
+}
+.hamburger-inner::before, .hamburger-inner::after {
+    content: "";
+    display: block;
+}
+.hamburger-inner::before {
+    top: -8px;
+}
+.hamburger-inner::after {
+    bottom: -8px;
+}
+
+/* Hamburger active state */
+.hamburger-btn[aria-expanded="true"] .hamburger-inner {
+    transform: rotate(45deg);
+}
+.hamburger-btn[aria-expanded="true"] .hamburger-inner::before {
+    top: 0;
+    opacity: 0;
+}
+.hamburger-btn[aria-expanded="true"] .hamburger-inner::after {
+    bottom: 0;
+    transform: rotate(-90deg);
+}
+
 /* =================================================================
    SEARCH SECTION
    ================================================================= */
@@ -2886,11 +2946,33 @@ body:not(.weather-snow-day) .hourly-item__time {
     }
 
     .header__nav {
-        gap: var(--space-0-75rem);
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: var(--clr-card-bg);
+        border-bottom: 1px solid var(--clr-card-border);
+        flex-direction: column;
+        align-items: center;
+        padding: var(--space-1rem) 0;
+        gap: var(--space-1-2rem);
+        backdrop-filter: var(--blur-lg);
+        -webkit-backdrop-filter: var(--blur-lg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .header__nav.open {
+        display: flex;
+    }
+
+    .hamburger-btn {
+        display: flex;
     }
 
     .header__link {
-        font-size: var(--text-0-78rem);
+        font-size: var(--text-1-05rem);
+        padding: var(--space-0-5rem) var(--space-1rem);
     }
 
     /* ---- Search ---- */
@@ -3206,8 +3288,8 @@ body:not(.weather-snow-day) .hourly-item__time {
 /* ================================================================= 
    WIND COMPASS VISUALIZATION
    ================================================================= */
-.wind-compass-wrap { display: flex; justify-content: center; margin-bottom: var(--space-6px); }
-.wind-compass-svg { width: var(--space-72px); height: var(--space-72px); overflow: visible; }
+.wind-compass-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: var(--space-6px); }
+.wind-compass-svg { width: var(--space-72px); height: var(--space-72px); overflow: visible; margin-bottom: 2px; }
 .compass-ring { stroke: var(--clr-white-a18-1); }
 .compass-label { fill: var(--clr-text-dim); font-family: 'Poppins',sans-serif; }
 .compass-needle-n { fill: var(--clr-error); opacity: .9; }

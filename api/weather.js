@@ -42,6 +42,7 @@ function setCORSHeaders(req, res) {
 function sanitizeQuery(q) {
     if (typeof q !== 'string') return null;
     // Allow letters, digits, spaces, commas, dots, hyphens, parentheses, +
+    // eslint-disable-next-line no-misleading-character-class
     const cleaned = q.trim().replace(/[^a-zA-Z0-9 ,.\-+()\u00C0-\u024F\u0900-\u097F]/g, '');
     return cleaned.length > 0 && cleaned.length <= 100 ? cleaned : null;
 }

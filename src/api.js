@@ -119,6 +119,9 @@ export async function fetchWeather(query, { onStart, onData, onError, onFinally 
         const timestamp = res.headers.get('sw-timestamp') || '';
 
         if (!res.ok) {
+            if (res.status === 403) {
+                throw new Error('API limit reached. Please try again later.');
+            }
             const body = await res.json().catch(() => null);
             throw new Error(body?.error?.message || 'City not found. Please try another name.');
         }
@@ -182,7 +185,12 @@ export async function fetchSuggestions(query, { onResults, onError } = {}) {
             const res = await fetch(buildSearchUrl(query), {
                 signal: searchAbortController.signal,
             });
-            if (!res.ok) throw new Error('Search failed');
+            if (!res.ok) {
+                if (res.status === 403) {
+                    throw new Error('API limit reached. Please try again later.');
+                }
+                throw new Error('Search failed');
+            }
             apiResults = await res.json();
             appCache.set(cacheKey, apiResults, SEARCH_TTL);
         }
@@ -198,10 +206,12 @@ export async function fetchSuggestions(query, { onResults, onError } = {}) {
 
         // Graceful degradation: show history even if API fails
         const historyMatches = getHistoryMatches(query);
-        if (historyMatches.length > 0) {
+        const isQuotaError = err.message === 'API limit reached. Please try again later.';
+
+        if (historyMatches.length > 0 && !isQuotaError) {
             onResults?.(historyMatches.map(h => ({ ...h, _fromHistory: true })));
         } else {
-            onError?.();
+            onError?.(err.message);
         }
     }
 }

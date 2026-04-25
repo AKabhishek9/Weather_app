@@ -10,7 +10,7 @@
  * All business logic lives in src/*.js modules.
  */
 
-import { currentUnit, setCurrentUnit, fmtTemp, lastWeatherData, getSearchHistory, recordSearch, clearSearchHistory } from './src/state.js';
+import { currentUnit, setCurrentUnit, lastWeatherData, getSearchHistory, recordSearch, clearSearchHistory } from './src/state.js';
 
 import { fetchWeather, fetchSuggestions }                         from './src/api.js';
 import { debounce }                                               from './src/utils.js';
@@ -40,6 +40,8 @@ const hourlyDailySection = document.getElementById('hourly-daily-section');
 const cityInput          = document.getElementById('city-input');
 const searchBtn          = document.getElementById('search-btn');
 const locationBtn        = document.getElementById('location-btn');
+const hamburgerBtn       = document.getElementById('hamburger-btn');
+const mainNav            = document.getElementById('main-nav');
 
 // ── Unit toggle ────────────────────────────────────────────────────────────
 
@@ -92,8 +94,13 @@ function doSuggestionFetch(query) {
 
     fetchSuggestions(query, {
         onResults: (cities) => renderSuggestions(cities, (cityName) => doWeatherFetch(cityName)),
-        onError:   ()       => {
-            suggestionsDropdown.innerHTML = '<div class="suggestion-empty" role="status">No cities found</div>';
+        onError:   (msg)    => {
+            if (msg === 'API limit reached. Please try again later.') {
+                showToast(msg, 'error');
+                suggestionsDropdown.hidden = true;
+            } else {
+                suggestionsDropdown.innerHTML = '<div class="suggestion-empty" role="status">No cities found</div>';
+            }
         },
     });
 }
@@ -213,6 +220,30 @@ document.addEventListener('click', (e) => {
         setActiveSuggestionIdx(-1);
     }
 });
+
+// Mobile hamburger menu logic
+if (hamburgerBtn && mainNav) {
+    hamburgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isExpanded = hamburgerBtn.getAttribute('aria-expanded') === 'true';
+        hamburgerBtn.setAttribute('aria-expanded', !isExpanded);
+        mainNav.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!mainNav.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+            mainNav.classList.remove('open');
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+            mainNav.classList.remove('open');
+        }
+    });
+}
 
 // Hourly / Daily tab switching — roving tabindex + aria-selected
 function activateTab(tabToActivate, tabToDeactivate, panelToShow, panelToHide) {

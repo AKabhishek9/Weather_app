@@ -77,10 +77,19 @@
                 <a href="#footer" class="header__link">About</a>
             </nav>
 
-            <!-- Unit Toggle: C / F -->
-            <div class="unit-toggle" role="group" aria-label="Temperature unit">
-                <button class="unit-toggle__btn unit-toggle__btn--active" id="unit-btn-c" data-unit="C" aria-pressed="true" title="Switch to Celsius">°C</button>
-                <button class="unit-toggle__btn" id="unit-btn-f" data-unit="F" aria-pressed="false" title="Switch to Fahrenheit">°F</button>
+            <div class="header__right">
+                <!-- Unit Toggle: C / F -->
+                <div class="unit-toggle" role="group" aria-label="Temperature unit">
+                    <button class="unit-toggle__btn unit-toggle__btn--active" id="unit-btn-c" data-unit="C" aria-pressed="true" title="Switch to Celsius">°C</button>
+                    <button class="unit-toggle__btn" id="unit-btn-f" data-unit="F" aria-pressed="false" title="Switch to Fahrenheit">°F</button>
+                </div>
+
+                <!-- Hamburger Button (Mobile) -->
+                <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle menu" aria-expanded="false">
+                    <span class="hamburger-box">
+                        <span class="hamburger-inner"></span>
+                    </span>
+                </button>
             </div>
         </div>
     </header>
@@ -256,23 +265,8 @@
                         <span>Wind</span>
                     </div>
                     <div class="widget-body">
-                        <div class="wind-compass-wrap" role="img" aria-label="Wind compass">
-                            <svg class="wind-compass-svg" viewBox="0 0 80 80" aria-hidden="true" focusable="false">
-                                <circle cx="40" cy="40" r="36" class="compass-ring" fill="none" stroke-width="2"/>
-                                <!-- Cardinal labels -->
-                                <text x="40" y="10" class="compass-label" text-anchor="middle" font-size="7">N</text>
-                                <text x="73" y="43" class="compass-label" text-anchor="middle" font-size="7">E</text>
-                                <text x="40" y="76" class="compass-label" text-anchor="middle" font-size="7">S</text>
-                                <text x="7" y="43" class="compass-label" text-anchor="middle" font-size="7">W</text>
-                                <!-- Needle (rotated by JS via transform) -->
-                                <g id="compass-needle-group" transform="rotate(0,40,40)">
-                                    <polygon points="40,12 43,40 40,45 37,40" class="compass-needle-n" />
-                                    <polygon points="40,68 43,40 40,35 37,40" class="compass-needle-s" />
-                                </g>
-                            </svg>
-                        </div>
-                        <div class="widget-value"><span id="widget-wind-val">--</span> <span class="text-sm" id="wind-unit-label">km/h</span></div>
                         <div class="widget-sub" id="widget-wind-dir">Direction: --</div>
+                        <div class="widget-value"><span id="widget-wind-val">--</span> <span class="text-sm" id="wind-unit-label">km/h</span></div>
                         <div class="widget-list mt-auto">
                             <span>Gusts: <b id="widget-wind-gust">--</b> <span class="wind-gust-unit">km/h</span></span>
                         </div>

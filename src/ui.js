@@ -117,8 +117,8 @@ export function renderCurrentWeather(data) {
     if (widgetMoonPhase) widgetMoonPhase.textContent = `Phase: ${astro.moon_phase}`;
 
     // 3. Wind
-    if (widgetWindVal)  widgetWindVal.innerHTML   = renderCompass(current.wind_degree, current.wind_dir, current.wind_kph, current.gust_kph);
-    if (widgetWindDir)  widgetWindDir.textContent  = `Direction: ${current.wind_dir}`;
+    if (widgetWindVal)  widgetWindVal.textContent  = current.wind_kph;
+    if (widgetWindDir)  widgetWindDir.innerHTML    = renderCompass(current.wind_degree, current.wind_dir);
     if (widgetWindGust) widgetWindGust.textContent = current.gust_kph;
 
     // 4. Moisture
@@ -575,10 +575,10 @@ export function renderSunArc(astro, localtime) {
  * @param {number} gust    - gust speed
  * @returns {string} HTML string
  */
-export function renderCompass(degrees, dir, kph, gust) {
+export function renderCompass(degrees, dir) {
     const safeDegs = isNaN(degrees) ? 0 : degrees;
     return `
-    <div class="wind-compass-wrap" aria-label="Wind ${kph} km/h from ${dir}">
+    <div class="wind-compass-wrap" aria-label="Wind direction: ${dir}">
         <svg class="wind-compass-svg" viewBox="0 0 72 72" role="img" aria-hidden="true">
             <circle class="compass-ring" cx="36" cy="36" r="33" stroke-width="1.5" fill="none"/>
             <text class="compass-label" x="34" y="9"  font-size="7" text-anchor="middle">N</text>
@@ -591,8 +591,8 @@ export function renderCompass(degrees, dir, kph, gust) {
             </g>
             <circle cx="36" cy="36" r="3" fill="rgba(255,255,255,.5)"/>
         </svg>
-    </div>
-    <div>${kph} km/h ${dir}</div>`;
+        <div style="font-size: var(--text-sm); font-weight: 500; margin-top: 4px;">${dir}</div>
+    </div>`;
 }
 
 // ── Toast & loader ─────────────────────────────────────────────────────────
