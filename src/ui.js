@@ -14,6 +14,7 @@ import { formatDate } from './utils.js';
 
 // Chart.js instance (destroyed + re-created on each weather fetch)
 let precipChart = null;
+let precipChartCanvas = null;
 
 
 // ── DOM element cache ──────────────────────────────────────────────────────
@@ -268,96 +269,97 @@ export function renderPrecipChart(hours) {
     const canvas = document.getElementById('precip-chart');
     if (!canvas) return;
 
-    // Wait for Chart.js to be available (loaded via CDN with defer)
-    if (typeof Chart === 'undefined') {
-        window.addEventListener('load', () => renderPrecipChart(hours), { once: true });
-        return;
-    }
+    precipChartCanvas = canvas;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.offsetWidth || 600;
+    const h = canvas.offsetHeight || 120;
+    canvas.width = w;
+    canvas.height = h;
 
-    // Destroy previous chart to avoid memory leaks / double render
-    if (precipChart) {
-        precipChart.destroy();
-        precipChart = null;
-    }
-
-    const labels = hours.map((h, idx) => {
-        if (idx === 0) return 'Now';
-        const d = new Date(h.time.replace(' ', 'T'));
-        return d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
-    });
+    const padding = 40;
+    const chartW = w - 2 * padding;
+    const chartH = h - 2 * padding;
+    const barW = Math.max(2, (chartW / hours.length) - 2);
+    const spacing = chartW / hours.length;
 
     const rainData = hours.map(h => h.chance_of_rain || 0);
     const snowData = hours.map(h => h.chance_of_snow || 0);
-    // Use whichever precip type is higher per slot
     const data = rainData.map((r, i) => Math.max(r, snowData[i]));
 
-    // Colour bars based on intensity: blue gradient
-    const barColors = data.map(v => {
-        if (v === 0)  return 'rgba(255,255,255,0.10)';
-        if (v < 25)   return 'rgba(79,195,247,0.35)';
-        if (v < 50)   return 'rgba(79,195,247,0.55)';
-        if (v < 75)   return 'rgba(79,195,247,0.75)';
-        return 'rgba(3,155,229,0.90)';
+    // Clear background
+    ctx.fillStyle = 'transparent';
+    ctx.fillRect(0, 0, w, h);
+
+    // Draw Y-axis gridlines and labels
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillStyle = 'rgba(232,240,248,0.5)';
+    ctx.font = '10px Poppins';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i <= 100; i += 25) {
+        const y = h - padding - (i / 100) * chartH;
+        ctx.beginPath();
+        ctx.moveTo(padding - 5, y);
+        ctx.lineTo(w - padding, y);
+        ctx.stroke();
+        ctx.fillText(i + '%', padding - 10, y);
+    }
+
+    // Draw Y-axis
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, h - padding);
+    ctx.stroke();
+
+    // Draw bars
+    data.forEach((val, idx) => {
+        const barH = (val / 100) * chartH;
+        const x = padding + idx * spacing + (spacing - barW) / 2;
+        const y = h - padding - barH;
+
+        // Color based on intensity
+        let color = 'rgba(255,255,255,0.10)';
+        if (val > 0 && val < 25) color = 'rgba(79,195,247,0.35)';
+        else if (val >= 25 && val < 50) color = 'rgba(79,195,247,0.55)';
+        else if (val >= 50 && val < 75) color = 'rgba(79,195,247,0.75)';
+        else if (val >= 75) color = 'rgba(3,155,229,0.90)';
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, barW, barH);
+        ctx.strokeStyle = 'rgba(79,195,247,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, barW, barH);
     });
 
-    precipChart = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Precipitation %',
-                data,
-                backgroundColor: barColors,
-                borderColor:     'rgba(79,195,247,0.3)',
-                borderWidth:     1,
-                borderRadius:    4,
-                borderSkipped:   false,
-            }],
-        },
-        options: {
-            responsive:          true,
-            maintainAspectRatio: false,
-            animation:           { duration: 600, easing: 'easeOutQuart' },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => `${ctx.raw}% chance of rain`,
-                    },
-                    backgroundColor: 'rgba(10,25,50,0.90)',
-                    titleColor:      '#4fc3f7',
-                    bodyColor:       '#e8f0f8',
-                    padding:         10,
-                    cornerRadius:    8,
-                },
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        color:    'rgba(232,240,248,0.6)',
-                        font:     { family: 'Poppins', size: 10 },
-                        maxRotation: 0,
-                        // Show every 3rd label to avoid crowding
-                        callback: (val, idx) => idx % 3 === 0 ? labels[idx] : '',
-                    },
-                    grid: { display: false },
-                    border: { color: 'rgba(255,255,255,0.08)' },
-                },
-                y: {
-                    min:  0,
-                    max:  100,
-                    ticks: {
-                        color:     'rgba(232,240,248,0.5)',
-                        font:      { family: 'Poppins', size: 10 },
-                        stepSize:  25,
-                        callback:  v => v + '%',
-                    },
-                    grid: { color: 'rgba(255,255,255,0.06)' },
-                    border: { color: 'rgba(255,255,255,0.08)' },
-                },
-            },
-        },
+    // Draw X-axis labels (every 3rd)
+    ctx.fillStyle = 'rgba(232,240,248,0.6)';
+    ctx.font = '10px Poppins';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    hours.forEach((h, idx) => {
+        if (idx % 3 === 0) {
+            let label = 'Now';
+            if (idx > 0) {
+                const d = new Date(h.time.replace(' ', 'T'));
+                label = d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+            }
+            const x = padding + idx * spacing + spacing / 2;
+            ctx.fillText(label, x, h - padding + 10);
+        }
     });
+}
+
+/** Resize the precipitation chart canvas when tab is shown */
+export function resizePrecipChart() {
+    if (precipChartCanvas) {
+        // Trigger a redraw by setting width
+        const parent = precipChartCanvas.parentElement;
+        if (parent) {
+            precipChartCanvas.width = parent.offsetWidth - 10;
+        }
+    }
 }
 
 // ── Autocomplete suggestions ───────────────────────────────────────────────
