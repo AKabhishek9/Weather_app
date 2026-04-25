@@ -222,6 +222,15 @@ body.is-loading .glass-card::after {
     gap: var(--space-sm);
 }
 
+.search-bar__buttons {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.search-bar__buttons .btn {
+    flex: 1;
+}
+
 .search-bar__input-wrap {
     position: relative;
     flex: 1;
@@ -322,10 +331,11 @@ body.is-loading .glass-card::after {
 }
 
 .scene-stage {
-    height: 300px;
+    height: 260px;
     position: relative;
     background: linear-gradient(to bottom, #1e2d40, #0f1420);
     transition: background 1s ease;
+    overflow: hidden;
 }
 
 .weather-info-overlay {
@@ -376,7 +386,7 @@ body.is-loading .glass-card::after {
 /* --- Details Grid --- */
 .details-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: var(--space-md);
 }
 
@@ -564,12 +574,16 @@ body.is-loading .glass-card::after {
 
 @media (min-width: 480px) {
     .search-bar { flex-direction: row; }
+    .search-bar__buttons .btn {
+        flex: 0 0 auto;
+    }
+    .details-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 768px) {
     .main { padding: var(--space-xl); }
-    .weather-card { display: grid; grid-template-columns: 1fr 1fr; height: 400px; }
-    .scene-stage { height: 100%; }
+    .weather-card { display: block; }
+    .scene-stage { height: 360px; }
     .details-grid { grid-template-columns: repeat(3, 1fr); }
     .forecast__grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-md); }
     .forecast-card { display: flex; flex-direction: column; text-align: center; padding: var(--space-md); }
@@ -580,7 +594,8 @@ body.is-loading .glass-card::after {
 }
 
 @media (min-width: 1024px) {
-    .details-grid { grid-template-columns: repeat(6, 1fr); }
+    .scene-stage { height: 400px; }
+    .details-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* --- Animations --- */

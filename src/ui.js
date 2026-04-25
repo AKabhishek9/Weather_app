@@ -84,7 +84,7 @@ export function renderCurrentWeather(data) {
     // Primary temps
     weatherTemp.textContent      = fmtTemp(current.temp_c);
     weatherCondition.textContent = current.condition.text;
-    weatherFeels.textContent     = `Feels like ${fmtTemp(current.feelslike_c)}`;
+    weatherFeels.textContent     = fmtTemp(current.feelslike_c);
 
     // Quick-stats overlay (always °C unit, no conversion needed for wind/UV)
     const humQ  = document.getElementById('weather-humidity-q');

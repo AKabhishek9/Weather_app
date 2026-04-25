@@ -11,8 +11,8 @@
  *         "Last updated: <time>".
  */
 
-const SHELL_CACHE  = 'skysense-shell-v1';
-const API_CACHE    = 'skysense-api-v1';
+const SHELL_CACHE  = 'skysense-shell-v2';
+const API_CACHE    = 'skysense-api-v2';
 
 // ── App-shell assets to pre-cache on install ──────────────────────────────
 const SHELL_ASSETS = [
@@ -32,9 +32,19 @@ const SHELL_ASSETS = [
 // ── Install: cache the app shell ──────────────────────────────────────────
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS))
+        caches.open(SHELL_CACHE).then((cache) => {
+            // Cache assets individually so one missing file doesn't brick the install.
+            return Promise.allSettled(
+                SHELL_ASSETS.map((url) =>
+                    fetch(url)
+                        .then((res) => {
+                            if (res.ok) cache.put(url, res);
+                        })
+                        .catch(() => {})
+                )
+            );
+        })
     );
-    // Activate immediately without waiting for old tabs to close
     self.skipWaiting();
 });
 
