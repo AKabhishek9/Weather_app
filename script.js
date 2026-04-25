@@ -23,7 +23,6 @@ import {
     showLoading,
     showToast,
     hideToast,
-    resizePrecipChart,
     hdTabHourly,
     hdTabDaily,
     hdPanelHourly,
@@ -289,7 +288,6 @@ function activateTab(tabToActivate, tabToDeactivate, panelToShow, panelToHide) {
 
         setTimeout(() => {
             panelToShow.classList.remove('hd-panel--entering');
-            if (panelToShow === hdPanelHourly) resizePrecipChart();
         }, 220);
     }, 180);
 }
