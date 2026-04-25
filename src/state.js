@@ -54,7 +54,8 @@ export function setLastWeatherData(data) {
 
 // ── Search history ─────────────────────────────────────────────────────────
 
-const HISTORY_KEY = 'skysense_search_history';
+const HISTORY_KEY = 'skysense_history';
+const LEGACY_HISTORY_KEY = 'skysense_search_history';
 const MAX_HISTORY = 10;
 
 /**
@@ -63,7 +64,16 @@ const MAX_HISTORY = 10;
  */
 export function getSearchHistory() {
     try {
-        return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+        const current = localStorage.getItem(HISTORY_KEY);
+        if (current) return JSON.parse(current) || [];
+
+        const legacy = localStorage.getItem(LEGACY_HISTORY_KEY);
+        if (!legacy) return [];
+
+        const migrated = JSON.parse(legacy) || [];
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(migrated.slice(0, MAX_HISTORY)));
+        localStorage.removeItem(LEGACY_HISTORY_KEY);
+        return migrated;
     } catch {
         return [];
     }
@@ -115,5 +125,5 @@ export function getHistoryMatches(query) {
  */
 export function clearSearchHistory() {
     localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(LEGACY_HISTORY_KEY);
 }
-

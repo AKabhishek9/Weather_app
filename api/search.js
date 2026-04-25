@@ -27,19 +27,15 @@ const ALLOWED_ORIGINS = [
 ];
 
 function setCORSHeaders(req, res) {
-    const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Vary', 'Origin');
 }
 
 function sanitizeQuery(q) {
     if (typeof q !== 'string') return null;
-    // eslint-disable-next-line no-misleading-character-class
-    const cleaned = q.trim().replace(/[^a-zA-Z0-9 ,.\-+()\u00C0-\u024F\u0900-\u097F]/g, '');
+    const cleaned = q.trim().replace(/[^a-zA-Z0-9 ,.-]/g, '');
     return cleaned.length > 0 && cleaned.length <= 100 ? cleaned : null;
 }
 

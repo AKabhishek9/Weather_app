@@ -602,7 +602,8 @@ export function renderCompass(degrees, dir) {
  * @param {boolean} visible
  */
 export function showLoading(visible) {
-    loaderWrap.hidden = !visible;
+    document.body.classList.toggle('is-loading', visible);
+    if (loaderWrap) loaderWrap.hidden = true;
 }
 
 /**

@@ -23,6 +23,7 @@ import {
     showLoading,
     showToast,
     hideToast,
+    resizePrecipChart,
     hdTabHourly,
     hdTabDaily,
     hdPanelHourly,
@@ -42,6 +43,7 @@ const searchBtn          = document.getElementById('search-btn');
 const locationBtn        = document.getElementById('location-btn');
 const hamburgerBtn       = document.getElementById('hamburger-btn');
 const mainNav            = document.getElementById('main-nav');
+const emptyState         = document.getElementById('empty-state');
 
 // ── Unit toggle ────────────────────────────────────────────────────────────
 
@@ -53,25 +55,34 @@ function setUnit(unit) {
         const isActive = btn.dataset.unit === unit;
         btn.classList.toggle('unit-toggle__btn--active', isActive);
         btn.setAttribute('aria-pressed', String(isActive));
+        if (isActive) {
+            btn.classList.add('unit-toggle__btn--bump');
+            setTimeout(() => btn.classList.remove('unit-toggle__btn--bump'), 220);
+        }
     });
 
     // Re-render current data with the new unit
-    if (lastWeatherData) renderCurrentWeather(lastWeatherData);
+    if (lastWeatherData) {
+        renderCurrentWeather(lastWeatherData);
+        renderForecast(lastWeatherData.forecast.forecastday);
+        renderHourly(lastWeatherData.forecast.forecastday, lastWeatherData.location.localtime);
+    }
 }
 
 // ── Search helpers ─────────────────────────────────────────────────────────
 
 function doWeatherFetch(query) {
-    weatherSection.hidden     = true;
-    hourlyDailySection.hidden = true;
+    if (emptyState) emptyState.hidden = true;
+    weatherSection.hidden = false;
+    hourlyDailySection.hidden = false;
     hideToast();
 
     fetchWeather(query, {
         onStart:   () => showLoading(true),
         onData:    (data) => {
             renderCurrentWeather(data);
-            renderHourly(data.forecast.forecastday, data.location.localtime);
             renderForecast(data.forecast.forecastday);
+            renderHourly(data.forecast.forecastday, data.location.localtime);
 
             // Record in history (Task 10)
             const { name, country, region } = data.location;
@@ -81,7 +92,10 @@ function doWeatherFetch(query) {
             focusWeatherSection();
         },
 
-        onError:   (msg) => showToast(msg, 'error'),
+        onError:   (msg) => {
+            showToast(msg, 'error');
+            if (!lastWeatherData && emptyState) emptyState.hidden = false;
+        },
         onFinally: ()    => showLoading(false),
     });
 }
@@ -95,7 +109,7 @@ function doSuggestionFetch(query) {
     fetchSuggestions(query, {
         onResults: (cities) => renderSuggestions(cities, (cityName) => doWeatherFetch(cityName)),
         onError:   (msg)    => {
-            if (msg === 'API limit reached. Please try again later.') {
+            if (msg === 'API quota reached. Try again later.') {
                 showToast(msg, 'error');
                 suggestionsDropdown.hidden = true;
             } else {
@@ -141,7 +155,7 @@ locationBtn.addEventListener('click', () => {
     showToast('Detecting your location…', 'info');
     navigator.geolocation.getCurrentPosition(
         ({ coords }) => doWeatherFetch(`${coords.latitude},${coords.longitude}`),
-        ()           => showToast('Unable to retrieve your location. Please allow location access.', 'error'),
+        ()           => showToast('Location access denied. Search manually.', 'info'),
     );
 });
 
@@ -223,6 +237,11 @@ document.addEventListener('click', (e) => {
 
 // Mobile hamburger menu logic
 if (hamburgerBtn && mainNav) {
+    const closeMenu = () => {
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+        mainNav.classList.remove('open');
+    };
+
     hamburgerBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const isExpanded = hamburgerBtn.getAttribute('aria-expanded') === 'true';
@@ -232,21 +251,25 @@ if (hamburgerBtn && mainNav) {
 
     document.addEventListener('click', (e) => {
         if (!mainNav.contains(e.target) && !hamburgerBtn.contains(e.target)) {
-            hamburgerBtn.setAttribute('aria-expanded', 'false');
-            mainNav.classList.remove('open');
+            closeMenu();
         }
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            hamburgerBtn.setAttribute('aria-expanded', 'false');
-            mainNav.classList.remove('open');
+            closeMenu();
         }
+    });
+
+    mainNav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', closeMenu);
     });
 }
 
 // Hourly / Daily tab switching — roving tabindex + aria-selected
 function activateTab(tabToActivate, tabToDeactivate, panelToShow, panelToHide) {
+    if (tabToActivate.classList.contains('hd-tab--active')) return;
+
     tabToActivate.classList.add('hd-tab--active');
     tabToActivate.setAttribute('aria-selected', 'true');
     tabToActivate.removeAttribute('tabindex');
@@ -255,8 +278,20 @@ function activateTab(tabToActivate, tabToDeactivate, panelToShow, panelToHide) {
     tabToDeactivate.setAttribute('aria-selected', 'false');
     tabToDeactivate.setAttribute('tabindex', '-1');
 
-    panelToShow.classList.remove('hd-panel--hidden');
-    panelToHide.classList.add('hd-panel--hidden');
+    panelToHide.classList.add('hd-panel--exiting');
+
+    setTimeout(() => {
+        panelToHide.classList.add('hd-panel--hidden');
+        panelToHide.classList.remove('hd-panel--exiting');
+
+        panelToShow.classList.remove('hd-panel--hidden');
+        panelToShow.classList.add('hd-panel--entering');
+
+        setTimeout(() => {
+            panelToShow.classList.remove('hd-panel--entering');
+            if (panelToShow === hdPanelHourly) resizePrecipChart();
+        }, 220);
+    }, 180);
 }
 
 hdTabHourly.addEventListener('click', () => activateTab(hdTabHourly, hdTabDaily, hdPanelHourly, hdPanelDaily));
@@ -281,13 +316,5 @@ window.addEventListener('DOMContentLoaded', () => {
         btn.setAttribute('aria-pressed', String(isActive));
     });
 
-    // Auto-detect location, fall back to New Delhi
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            ({ coords }) => doWeatherFetch(`${coords.latitude},${coords.longitude}`),
-            ()           => doWeatherFetch('New Delhi'),
-        );
-    } else {
-        doWeatherFetch('New Delhi');
-    }
+    if (emptyState) emptyState.hidden = false;
 });

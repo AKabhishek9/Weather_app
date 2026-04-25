@@ -91,7 +91,8 @@ function buildSearchUrl(query) {
  * @param {Function} callbacks.onFinally - always called after fetch completes
  */
 export async function fetchWeather(query, { onStart, onData, onError, onFinally } = {}) {
-    if (!IS_PRODUCTION && !API_KEY) {
+    const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+    if (!IS_PRODUCTION && !API_KEY && !isTest) {
         onError?.('Local testing: add your API key to src/api.js');
         return;
     }

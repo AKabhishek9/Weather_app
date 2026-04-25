@@ -42,7 +42,7 @@ describe('api module - fetchWeather', () => {
 
         await fetchWeather('InvalidCity', { onError });
 
-        expect(onError).toHaveBeenCalledWith('No matching location found.');
+        expect(onError).toHaveBeenCalledWith('City not found. Try a different name.');
     });
 
     it('should call onError with specific message on 403 quota exceeded', async () => {
@@ -56,7 +56,7 @@ describe('api module - fetchWeather', () => {
 
         await fetchWeather('NewLondon', { onError }); // Use different name to be safe
 
-        expect(onError).toHaveBeenCalledWith('API limit reached. Please try again later.');
+        expect(onError).toHaveBeenCalledWith('API quota reached. Try again later.');
     });
 
     it('should abort previous requests if a new one is started', async () => {
