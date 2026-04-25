@@ -11,8 +11,8 @@
  *         "Last updated: <time>".
  */
 
-const SHELL_CACHE  = 'skysense-shell-v2';
-const API_CACHE    = 'skysense-api-v2';
+const SHELL_CACHE  = 'skysense-shell-v3';
+const API_CACHE    = 'skysense-api-v3';
 
 // ── App-shell assets to pre-cache on install ──────────────────────────────
 const SHELL_ASSETS = [
