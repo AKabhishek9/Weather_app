@@ -1,9 +1,30 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function loadLocalEnv() {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+
+  const content = fs.readFileSync(envPath, 'utf8');
+  content.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+
+    const idx = trimmed.indexOf('=');
+    if (idx === -1) return;
+
+    const key = trimmed.slice(0, idx).trim();
+    const value = trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
+    if (key && !process.env[key]) process.env[key] = value;
+  });
+}
+
+loadLocalEnv();
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;

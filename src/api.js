@@ -31,7 +31,7 @@ function hideOfflineBanner() {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const API_KEY  = ''; // [SECURITY] Key removed. Add your key here for LOCAL DEV ONLY. Never commit!
+const API_KEY  = ''; // Reserved for direct file-based local testing only.
 const BASE_URL = 'https://api.weatherapi.com/v1';
 
 /**
@@ -40,7 +40,7 @@ const BASE_URL = 'https://api.weatherapi.com/v1';
  */
 export const IS_PRODUCTION = (() => {
     if (location.protocol === 'file:') return false;
-    if (['localhost', '127.0.0.1'].includes(location.hostname)) return false;
+    if (['localhost', '127.0.0.1'].includes(location.hostname)) return true;
     return true;
 })();
 
@@ -92,7 +92,7 @@ function buildSearchUrl(query) {
  */
 export async function fetchWeather(query, { onStart, onData, onError, onFinally } = {}) {
     const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-    if (!IS_PRODUCTION && !API_KEY && !isTest) {
+    if (location.protocol === 'file:' && !API_KEY && !isTest) {
         onError?.('Local testing: add your API key to src/api.js');
         return;
     }
