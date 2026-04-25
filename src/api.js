@@ -31,7 +31,7 @@ function hideOfflineBanner() {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const API_KEY  = 'e62f2c31afcc4f3dba5124730261503';
+const API_KEY  = ''; // [SECURITY] Key removed. Add your key here for LOCAL DEV ONLY. Never commit!
 const BASE_URL = 'https://api.weatherapi.com/v1';
 
 /**
@@ -120,10 +120,13 @@ export async function fetchWeather(query, { onStart, onData, onError, onFinally 
 
         if (!res.ok) {
             if (res.status === 403) {
-                throw new Error('API limit reached. Please try again later.');
+                throw new Error('API quota reached. Try again later.');
             }
             const body = await res.json().catch(() => null);
-            throw new Error(body?.error?.message || 'City not found. Please try another name.');
+            if (res.status === 400 || res.status === 404) {
+                throw new Error('City not found. Try a different name.');
+            }
+            throw new Error(body?.error?.message || 'City not found. Try a different name.');
         }
 
         const data = await res.json();
@@ -147,8 +150,10 @@ export async function fetchWeather(query, { onStart, onData, onError, onFinally 
     } catch (err) {
         if (err.name === 'AbortError') return; // Cancelled — silent
 
-        const msg = err.message === 'Failed to fetch'
-            ? 'Could not connect to WeatherAPI. On Live Server, open localhost:3000 via node server.js instead.'
+        const msg = err.message === 'Failed to fetch' && navigator.onLine === false
+            ? "You're offline. Showing cached data."
+            : err.message === 'Failed to fetch'
+                ? 'City not found. Try a different name.'
             : err.message;
 
         onError?.(msg);
@@ -187,7 +192,7 @@ export async function fetchSuggestions(query, { onResults, onError } = {}) {
             });
             if (!res.ok) {
                 if (res.status === 403) {
-                    throw new Error('API limit reached. Please try again later.');
+                    throw new Error('API quota reached. Try again later.');
                 }
                 throw new Error('Search failed');
             }
@@ -206,7 +211,7 @@ export async function fetchSuggestions(query, { onResults, onError } = {}) {
 
         // Graceful degradation: show history even if API fails
         const historyMatches = getHistoryMatches(query);
-        const isQuotaError = err.message === 'API limit reached. Please try again later.';
+        const isQuotaError = err.message === 'API quota reached. Try again later.';
 
         if (historyMatches.length > 0 && !isQuotaError) {
             onResults?.(historyMatches.map(h => ({ ...h, _fromHistory: true })));
