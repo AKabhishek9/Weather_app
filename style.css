@@ -636,3 +636,171 @@ body.is-loading .glass-card::after {
 
 .weather, .hourly-daily { animation: fadeSlideUp 0.6s var(--transition-base); }
 .is-loading .weather, .is-loading .hourly-daily { animation: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ANIMATION SYSTEM — 10-scene weather animations (Canvas + CSS)
+   Appended classes & keyframes — DO NOT MOVE ABOVE EXISTING RULES
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* --- Scene Enter --- */
+@keyframes sceneEnter {
+    from { opacity: 0; transform: scale(0.97) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* --- Sun --- */
+.anim-sun-wrap {
+    position: absolute; top: 15%; left: 12%;
+    width: 80px; height: 80px;
+    z-index: 3;
+}
+.anim-sun {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle, #ffd93d 40%, #ff9800);
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(255,217,61,0.6), 0 0 80px rgba(255,165,0,0.3);
+    animation: sunPulseNew 4s ease-in-out infinite;
+}
+.anim-sun-rays {
+    position: absolute; inset: -25px;
+    background: radial-gradient(circle, rgba(255,217,61,0.35) 0%, transparent 70%);
+    animation: sunRayRotate 20s linear infinite;
+    border-radius: 50%;
+}
+.anim-lens-flare {
+    position: absolute; top: 50%; left: 120%;
+    width: 8px; height: 8px;
+    background: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    box-shadow: 20px 10px 0 3px rgba(255,220,100,0.25), 45px 20px 0 2px rgba(255,255,255,0.15);
+    animation: sunPulseNew 5s ease-in-out infinite reverse;
+}
+
+@keyframes sunPulseNew {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50%      { transform: scale(1.1); opacity: 1; }
+}
+@keyframes sunRayRotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* --- Moon --- */
+.anim-moon {
+    position: absolute; top: 12%; right: 15%;
+    width: 60px; height: 60px;
+    background: #e8e0d0;
+    border-radius: 50%;
+    box-shadow: 0 0 25px rgba(245,245,220,0.4), inset -12px -8px 10px rgba(0,0,0,0.12);
+    animation: moonFloat 6s ease-in-out infinite alternate;
+    z-index: 3;
+}
+@keyframes moonFloat {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-6px); }
+}
+
+/* --- Clouds (scene) --- */
+.anim-cloud {
+    position: absolute;
+    background: rgba(255,255,255,0.7);
+    border-radius: 40px;
+    filter: blur(3px);
+    animation: animCloudDrift 30s linear infinite;
+    z-index: 4;
+}
+.anim-cloud::before {
+    content: '';
+    position: absolute;
+    width: 55%; height: 120%;
+    top: -40%; left: 15%;
+    background: inherit;
+    border-radius: 50%;
+}
+.anim-cloud::after {
+    content: '';
+    position: absolute;
+    width: 40%; height: 100%;
+    top: -25%; right: 20%;
+    background: inherit;
+    border-radius: 50%;
+}
+.anim-cloud--dark {
+    background: rgba(55,71,79,0.85);
+    filter: blur(4px);
+}
+
+@keyframes animCloudDrift {
+    from { transform: translateX(-200px); }
+    to   { transform: translateX(calc(100% + 200px)); }
+}
+
+/* --- Fog layers (CSS-only scene) --- */
+.anim-fog-layer {
+    position: absolute;
+    left: -10%; right: -10%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), rgba(255,255,255,0.12), rgba(255,255,255,0.08), transparent);
+    animation: fogDrift 25s ease-in-out infinite alternate;
+    border-radius: 50%;
+    z-index: 3;
+}
+.anim-fog-ground {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: linear-gradient(to top, rgba(180,200,210,0.25), transparent);
+    animation: fogPulse 6s ease-in-out infinite alternate;
+}
+@keyframes fogDrift {
+    from { transform: translateX(-15%); }
+    to   { transform: translateX(15%); }
+}
+@keyframes fogPulse {
+    from { opacity: 0.5; }
+    to   { opacity: 1; }
+}
+
+/* --- Rain mist overlay --- */
+.anim-rain-mist {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(100,160,220,0.06), transparent 40%);
+    animation: fogPulse 3s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* --- Snow accumulation --- */
+.anim-snow-accumulation {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 12px;
+    background: linear-gradient(to top, rgba(255,255,255,0.4), transparent);
+    border-radius: 4px 4px 0 0;
+    z-index: 5;
+}
+
+/* --- Lightning sky flash overlay --- */
+.anim-sky-flash {
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.05);
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+}
+@keyframes skyFlash {
+    0%   { opacity: 0; }
+    5%   { opacity: 0.7; }
+    10%  { opacity: 0.1; }
+    15%  { opacity: 0.6; }
+    25%  { opacity: 0; }
+    100% { opacity: 0; }
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
