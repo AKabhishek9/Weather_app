@@ -477,6 +477,21 @@ body.is-loading .glass-card::after {
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
+/* Panel visibility for tab switching */
+.hd-panel {
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.hd-panel--hidden {
+    display: none !important;
+}
+.hd-panel--exiting {
+    opacity: 0;
+    transform: translateY(6px);
+}
+.hd-panel--entering {
+    animation: fadeSlideUp 0.22s ease forwards;
+}
+
 .hourly-scroll {
     display: flex;
     gap: var(--space-md);

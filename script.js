@@ -280,9 +280,11 @@ function activateTab(tabToActivate, tabToDeactivate, panelToShow, panelToHide) {
     panelToHide.classList.add('hd-panel--exiting');
 
     setTimeout(() => {
+        panelToHide.hidden = true;
         panelToHide.classList.add('hd-panel--hidden');
         panelToHide.classList.remove('hd-panel--exiting');
 
+        panelToShow.hidden = false;
         panelToShow.classList.remove('hd-panel--hidden');
         panelToShow.classList.add('hd-panel--entering');
 
@@ -314,5 +316,20 @@ window.addEventListener('DOMContentLoaded', () => {
         btn.setAttribute('aria-pressed', String(isActive));
     });
 
-    if (emptyState) emptyState.hidden = false;
+    // Auto-fetch weather for user's current location on page load
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            ({ coords }) => {
+                if (emptyState) emptyState.hidden = true;
+                doWeatherFetch(`${coords.latitude},${coords.longitude}`);
+            },
+            () => {
+                // Location denied — show empty state so user can search manually
+                if (emptyState) emptyState.hidden = false;
+            },
+            { timeout: 8000 }
+        );
+    } else {
+        if (emptyState) emptyState.hidden = false;
+    }
 });
