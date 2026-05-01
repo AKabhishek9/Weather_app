@@ -98,24 +98,107 @@ export function renderCurrentWeather(data) {
     // ── Detail grid ──────────────────────────────────────────────────────
 
     // 1. Air Quality
-    const epaMap   = { 1:'Good', 2:'Moderate', 3:'Sensitive', 4:'Unhealthy', 5:'Very Unhealthy', 6:'Hazardous' };
     const aqi      = current.air_quality || {};
-    const epaIndex = aqi['us-epa-index'] || 0;
+    const aqiLabels = ['','Good','Moderate','Unhealthy for Sensitive','Unhealthy','Very Unhealthy','Hazardous'];
+    const aqiColors = ['','#00E400','#FFFF00','#FF7E00','#FF0000','#8F3F97','#7E0023'];
+    
+    const aqiIndex  = aqi['us-epa-index'] ?? 0;
+    const aqiLabel  = aqiLabels[aqiIndex] || 'Unknown';
+    const aqiColor  = aqiColors[aqiIndex] || '#aaa';
+    const aqiPct    = ((aqiIndex / 6) * 100).toFixed(0);
+    const pm25      = aqi.pm2_5?.toFixed(1) ?? '--';
+    const pm10      = aqi.pm10?.toFixed(1)  ?? '--';
 
     if (widgetAqiIndex) {
-        const label = epaMap[epaIndex] || (epaIndex || '--');
-        widgetAqiIndex.innerHTML = renderAqiBadge(label, epaIndex);
-        const card = widgetAqiIndex.closest('[data-aqi]') || widgetAqiIndex.parentElement;
-        if (card) card.dataset.aqi = epaIndex;
+        widgetAqiIndex.innerHTML = `
+    <span style="display:inline-block;width:12px;height:12px;
+      border-radius:50%;background:${aqiColor};
+      margin-right:8px;vertical-align:middle;
+      box-shadow:0 0 8px ${aqiColor}"></span>
+    <span style="color:${aqiColor};font-size:1.4rem;font-weight:700">
+      ${aqiLabel}
+    </span>
+    <div style="margin-top:10px;height:5px;border-radius:3px;
+      background:rgba(255,255,255,0.1);overflow:hidden">
+      <div style="height:100%;width:${aqiPct}%;
+        background:${aqiColor};border-radius:3px;
+        transition:width 0.6s ease"></div>
+    </div>
+    <div style="margin-top:10px;font-size:0.8rem;
+      color:rgba(255,255,255,0.6)">
+      PM2.5: <b style="color:#fff">${pm25}</b> µg/m³ &nbsp;|&nbsp;
+      PM10: <b style="color:#fff">${pm10}</b> µg/m³
+    </div>
+  `;
     }
-    if (widgetPm25) widgetPm25.textContent = aqi.pm2_5 ? Math.round(aqi.pm2_5) : '--';
-    if (widgetPm10) widgetPm10.textContent = aqi.pm10  ? Math.round(aqi.pm10)  : '--';
+    
+    // Clear the old PM elements since they're now in the widget-aqi-index
+    if (widgetPm25) widgetPm25.textContent = '';
+    if (widgetPm10) widgetPm10.textContent = '';
 
     // 2. Sun & Moon
-    const astro = data.forecast.forecastday[0].astro;
-    if (widgetSunrise)  widgetSunrise.innerHTML  = renderSunArc(astro, location.localtime);
-    if (widgetSunset)   widgetSunset.textContent  = `Sunset: ${astro.sunset}`;
-    if (widgetMoonPhase) widgetMoonPhase.textContent = `Phase: ${astro.moon_phase}`;
+    const sunrise   = data.forecast.forecastday[0].astro.sunrise;
+    const sunset    = data.forecast.forecastday[0].astro.sunset;
+    const moonPhase = data.forecast.forecastday[0].astro.moon_phase;
+    const localtime = data.location.localtime;
+
+    function toMins(timeStr) {
+        const [time, period] = timeStr.split(' ');
+        let [h, m] = time.split(':').map(Number);
+        if (period === 'PM' && h !== 12) h += 12;
+        if (period === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+    }
+
+    const nowMins     = (() => {
+        const t = localtime.split(' ')[1];
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    })();
+    const riseMins    = toMins(sunrise);
+    const setMins     = toMins(sunset);
+    const progress    = Math.max(0, Math.min(1, (nowMins - riseMins) / (setMins - riseMins)));
+    
+    const cx = 100, cy = 80, r = 65;
+    const angle = Math.PI - progress * Math.PI;
+    const dotX  = cx + r * Math.cos(angle);
+    const dotY  = cy - r * Math.sin(angle);
+
+    if (widgetSunrise) {
+        widgetSunrise.innerHTML = `
+    <svg viewBox="0 0 200 95" width="100%" style="overflow:visible;margin-bottom:8px">
+      <path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}"
+        fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3"
+        stroke-linecap="round"/>
+      <path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${dotX} ${dotY}"
+        fill="none"
+        stroke="url(#sunGrad)" stroke-width="3"
+        stroke-linecap="round"/>
+      <defs>
+        <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#FF6B35"/>
+          <stop offset="100%" stop-color="#FFD93D"/>
+        </linearGradient>
+      </defs>
+      <circle cx="${dotX}" cy="${dotY}" r="7"
+        fill="#FFD93D"
+        filter="drop-shadow(0 0 6px rgba(255,217,61,0.9))"/>
+      <text x="${cx-r}" y="${cy+18}" 
+        font-size="10" fill="rgba(255,255,255,0.55)" 
+        text-anchor="middle">${sunrise}</text>
+      <text x="${cx+r}" y="${cy+18}" 
+        font-size="10" fill="rgba(255,255,255,0.55)" 
+        text-anchor="middle">${sunset}</text>
+    </svg>
+    <div style="font-size:0.75rem;color:rgba(255,255,255,0.5);
+      text-align:center;margin-top:4px">
+      🌙 ${moonPhase}
+    </div>
+  `;
+    }
+    
+    if (widgetSunset) widgetSunset.textContent = '';
+    if (widgetMoonPhase) widgetMoonPhase.textContent = '';
 
     // 3. Wind
     if (widgetWindVal)  widgetWindVal.textContent  = current.wind_kph;
@@ -581,19 +664,19 @@ export function renderCompass(degrees, dir) {
     const safeDegs = isNaN(degrees) ? 0 : degrees;
     return `
     <div class="wind-compass-wrap" aria-label="Wind direction: ${dir}">
-        <svg class="wind-compass-svg" viewBox="0 0 72 72" role="img" aria-hidden="true">
-            <circle class="compass-ring" cx="36" cy="36" r="33" stroke-width="1.5" fill="none"/>
-            <text class="compass-label" x="34" y="9"  font-size="7" text-anchor="middle">N</text>
-            <text class="compass-label" x="34" y="68" font-size="7" text-anchor="middle">S</text>
-            <text class="compass-label" x="5"  y="39" font-size="7" text-anchor="middle">W</text>
-            <text class="compass-label" x="63" y="39" font-size="7" text-anchor="middle">E</text>
-            <g id="compass-needle-group" style="transform:rotate(${safeDegs}deg)">
-                <polygon class="compass-needle-n" points="36,14 33,36 36,40 39,36"/>
-                <polygon class="compass-needle-s" points="36,58 33,36 36,32 39,36"/>
+        <svg class="wind-compass-svg" viewBox="0 0 120 120" role="img" aria-hidden="true">
+            <circle class="compass-ring" cx="60" cy="60" r="50" stroke-width="2" fill="none" stroke="rgba(255,255,255,0.15)"/>
+            <text class="compass-label" x="60" y="18" font-size="11" font-weight="bold" text-anchor="middle" fill="rgba(255,255,255,0.6)">N</text>
+            <text class="compass-label" x="60" y="108" font-size="11" text-anchor="middle" fill="rgba(255,255,255,0.4)">S</text>
+            <text class="compass-label" x="12" y="65" font-size="11" text-anchor="middle" fill="rgba(255,255,255,0.4)">W</text>
+            <text class="compass-label" x="108" y="65" font-size="11" text-anchor="middle" fill="rgba(255,255,255,0.4)">E</text>
+            <g transform="rotate(${safeDegs}, 60, 60)">
+                <line x1="60" y1="80" x2="60" y2="60" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                <line x1="60" y1="20" x2="60" y2="60" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="60" cy="60" r="4" fill="white"/>
             </g>
-            <circle cx="36" cy="36" r="3" fill="rgba(255,255,255,.5)"/>
         </svg>
-        <div style="font-size: var(--text-sm); font-weight: 500; margin-top: 4px;">${dir}</div>
+        <div style="font-size: 0.85rem; font-weight: 600; margin-top: 6px; color: rgba(255,255,255,0.9)">${dir}</div>
     </div>`;
 }
 
